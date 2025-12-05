@@ -13,34 +13,32 @@ import pickle
 import warnings
 warnings.filterwarnings('ignore')
 
+try:
+    import shap
+    SHAP_AVAILABLE = True
+except ImportError:
+    SHAP_AVAILABLE = False
+    warnings.warn("SHAP not available. explain_alert() will use feature importances as fallback.")
 
-def predict_alert(alert_data, model_path='cyber_alert_model.pkl', threshold=None):
+
+def _preprocess_alert(alert_data, model_data):
     """
-    Predict if an alert is normal or malicious.
+    Internal helper function to preprocess alert data for prediction/explanation.
     
     Parameters:
     -----------
     alert_data : dict or pandas.DataFrame
         Alert data with the same features as training data
-    model_path : str
-        Path to the saved model file
-    threshold : float, optional
-        Probability threshold for classification. If None, uses optimal threshold.
+    model_data : dict
+        Loaded model data from pickle file
     
     Returns:
     --------
-    dict : Prediction result with 'prediction' (0=Normal, 1=Malicious) and 'probability'
+    tuple : (X_pred, alert_df) where X_pred is preprocessed DataFrame ready for model
     """
-    # Load model
-    with open(model_path, 'rb') as f:
-        model_data = pickle.load(f)
-    
     model = model_data['model']
     label_encoders = model_data['label_encoders']
     feature_columns = model_data['feature_columns']
-    
-    if threshold is None:
-        threshold = model_data.get('optimal_threshold', 0.5)
     
     # Convert to DataFrame if dict
     if isinstance(alert_data, dict):
@@ -79,6 +77,38 @@ def predict_alert(alert_data, model_path='cyber_alert_model.pkl', threshold=None
     # Fill missing values
     X_pred = X_pred.fillna(X_pred.median(numeric_only=True))
     
+    return X_pred, alert_df
+
+
+def predict_alert(alert_data, model_path='cyber_alert_model.pkl', threshold=None):
+    """
+    Predict if an alert is normal or malicious.
+    
+    Parameters:
+    -----------
+    alert_data : dict or pandas.DataFrame
+        Alert data with the same features as training data
+    model_path : str
+        Path to the saved model file
+    threshold : float, optional
+        Probability threshold for classification. If None, uses optimal threshold.
+    
+    Returns:
+    --------
+    dict : Prediction result with 'prediction' (0=Normal, 1=Malicious) and 'probability'
+    """
+    # Load model
+    with open(model_path, 'rb') as f:
+        model_data = pickle.load(f)
+    
+    model = model_data['model']
+    
+    if threshold is None:
+        threshold = model_data.get('optimal_threshold', 0.5)
+    
+    # Preprocess alert data
+    X_pred, alert_df = _preprocess_alert(alert_data, model_data)
+    
     # Predict
     proba = model.predict_proba(X_pred)[:, 1]
     prediction = (proba >= threshold).astype(int)
@@ -87,6 +117,174 @@ def predict_alert(alert_data, model_path='cyber_alert_model.pkl', threshold=None
         'prediction': prediction[0] if len(prediction) == 1 else prediction,
         'probability': proba[0] if len(proba) == 1 else proba,
         'label': 'Malicious' if (prediction[0] if len(prediction) == 1 else prediction[0]) == 1 else 'Normal'
+    }
+
+
+def explain_alert(alert_data, model_path='cyber_alert_model.pkl', threshold=None, top_k=5):
+    """
+    Explain why an alert was classified as Normal or Malicious using SHAP values.
+    
+    Parameters:
+    -----------
+    alert_data : dict or pandas.DataFrame
+        Alert data with the same features as training data
+    model_path : str
+        Path to the saved model file
+    threshold : float, optional
+        Probability threshold for classification. If None, uses optimal threshold.
+    top_k : int, optional
+        Number of top contributing features to return (default: 5)
+    
+    Returns:
+    --------
+    dict : Explanation result with prediction, probability, label, top_features, and explanation_text
+    """
+    # Load model
+    with open(model_path, 'rb') as f:
+        model_data = pickle.load(f)
+    
+    model = model_data['model']
+    
+    if threshold is None:
+        threshold = model_data.get('optimal_threshold', 0.5)
+    
+    # Preprocess alert data (same as predict_alert)
+    X_pred, alert_df = _preprocess_alert(alert_data, model_data)
+    
+    # Get prediction first
+    proba = model.predict_proba(X_pred)[:, 1]
+    prediction = (proba >= threshold).astype(int)
+    pred_label = 'Malicious' if prediction[0] == 1 else 'Normal'
+    
+    # Compute explanations
+    top_features = []
+    
+    if SHAP_AVAILABLE:
+        try:
+            # Use SHAP TreeExplainer for RandomForest
+            explainer = shap.TreeExplainer(model)
+            shap_values = explainer.shap_values(X_pred)
+            
+            # For binary classification, shap_values is a list [values_for_class_0, values_for_class_1]
+            # We want class 1 (Malicious) explanations
+            if isinstance(shap_values, list):
+                shap_vals = shap_values[1]  # Class 1 (Malicious)
+            else:
+                shap_vals = shap_values
+            
+            # Get SHAP values for this instance
+            if len(shap_vals.shape) > 1:
+                instance_shap = shap_vals[0]  # First (and only) instance
+            else:
+                instance_shap = shap_vals
+            
+            # Get feature names
+            feature_names = X_pred.columns.tolist()
+            
+            # Create list of (feature_name, shap_value, feature_value) tuples
+            feature_contributions = []
+            for i, feat_name in enumerate(feature_names):
+                shap_val = float(instance_shap[i])
+                feat_val = float(X_pred.iloc[0, i])
+                
+                # Try to get original value from alert_df if possible
+                original_value = None
+                if feat_name in alert_df.columns:
+                    original_value = alert_df.iloc[0][feat_name]
+                elif feat_name == 'same_source_dest_ip':
+                    # This is a derived feature
+                    original_value = bool(feat_val)
+                else:
+                    original_value = feat_val
+                
+                feature_contributions.append({
+                    'feature': feat_name,
+                    'value': original_value,
+                    'contribution': shap_val
+                })
+            
+            # Sort by absolute contribution and take top_k
+            feature_contributions.sort(key=lambda x: abs(x['contribution']), reverse=True)
+            top_features = feature_contributions[:top_k]
+            
+        except Exception as e:
+            warnings.warn(f"SHAP explanation failed: {e}. Falling back to feature importances.")
+            SHAP_AVAILABLE = False
+    
+    # Fallback to feature importances if SHAP not available or failed
+    if not SHAP_AVAILABLE or len(top_features) == 0:
+        feature_importances = model.feature_importances_
+        feature_names = X_pred.columns.tolist()
+        
+        # Get feature values for this instance
+        instance_values = X_pred.iloc[0].values
+        
+        # Compute simple contribution: importance * (normalized feature value)
+        # Normalize by subtracting mean (approximate)
+        feature_contributions = []
+        for i, feat_name in enumerate(feature_names):
+            importance = float(feature_importances[i])
+            feat_val = float(instance_values[i])
+            
+            # Simple contribution: importance * value (sign indicates direction)
+            contribution = importance * feat_val
+            
+            # Try to get original value from alert_df if possible
+            original_value = None
+            if feat_name in alert_df.columns:
+                original_value = alert_df.iloc[0][feat_name]
+            elif feat_name == 'same_source_dest_ip':
+                original_value = bool(feat_val)
+            else:
+                original_value = feat_val
+            
+            feature_contributions.append({
+                'feature': feat_name,
+                'value': original_value,
+                'contribution': contribution
+            })
+        
+        # Sort by absolute contribution and take top_k
+        feature_contributions.sort(key=lambda x: abs(x['contribution']), reverse=True)
+        top_features = feature_contributions[:top_k]
+    
+    # Generate explanation text
+    explanation_parts = []
+    explanation_parts.append(f"The alert was classified as {pred_label}")
+    
+    if len(top_features) > 0:
+        explanation_parts.append("mainly because:")
+        
+        contributing_features = []
+        for feat in top_features[:3]:  # Use top 3 for text
+            feat_name = feat['feature'].replace('_', ' ')
+            contribution = feat['contribution']
+            value = feat['value']
+            
+            if abs(contribution) > 0.01:  # Only mention significant contributions
+                direction = "high" if contribution > 0 else "low"
+                if isinstance(value, (int, float)):
+                    contributing_features.append(f"{feat_name} is {direction} ({value:.2f})")
+                elif isinstance(value, bool):
+                    contributing_features.append(f"{feat_name} is {str(value)}")
+                else:
+                    contributing_features.append(f"{feat_name} is {direction}")
+        
+        if contributing_features:
+            explanation_parts.append(", ".join(contributing_features) + ".")
+        else:
+            explanation_parts.append("the feature values align with the predicted class.")
+    else:
+        explanation_parts.append("based on the overall pattern of features.")
+    
+    explanation_text = " ".join(explanation_parts)
+    
+    return {
+        'prediction': int(prediction[0]),
+        'probability': float(proba[0]),
+        'label': pred_label,
+        'top_features': top_features,
+        'explanation_text': explanation_text
     }
 
 
@@ -252,13 +450,6 @@ if __name__ == '__main__':
         }, f)
 
     print("Model saved successfully!")
-
-    # Save predictions for analysis
-    predictions_df = X_test.copy()
-    predictions_df['actual'] = y_test.values
-    predictions_df['predicted'] = y_test_pred
-    predictions_df.to_csv('predictions.csv', index=False)
-    print("Predictions saved to 'predictions.csv'")
 
     print("\n" + "="*60)
     print("MODEL TRAINING COMPLETE!")
