@@ -35,7 +35,7 @@ The model uses 21 features including:
 ## Files
 
 - `ml_model.py` - Main training script, prediction function (`predict_alert`), and explanation function (`explain_alert`)
-- `api.py` - FastAPI backend server for HTTP API endpoints
+- `app.py` - Streamlit web application with cyberpunk HUD theme
 - `cyber_alert_model.pkl` - Trained model (created after running ml_model.py)
 - `cyberfeddefender_dataset.csv` - Training dataset
 - `requirements.txt` - Python dependencies
@@ -51,7 +51,7 @@ pip install -r requirements.txt
 Or manually:
 
 ```bash
-pip install pandas numpy scikit-learn shap fastapi uvicorn[standard]
+pip install pandas numpy scikit-learn shap streamlit
 ```
 
 ## Usage
@@ -70,7 +70,25 @@ This will:
 - Evaluate the model performance
 - Save the trained model to `cyber_alert_model.pkl`
 
-### 2. Make Predictions (Python API)
+### 2. Run the Streamlit Web Application
+
+Start the Streamlit app:
+
+```bash
+streamlit run app.py
+```
+
+The application will open in your browser at `http://localhost:8501`
+
+#### Features
+
+- **Predefined Scenarios**: Click buttons to analyze pre-configured alert scenarios using the real model
+- **Custom Alert Input**: Fill out a form to analyze custom alerts with the real model
+- **Real-time Analysis**: All predictions use the actual trained Random Forest model with SHAP explanations
+- **Alert Stream**: View history of analyzed alerts
+- **Detailed Explanations**: See top contributing features and explanation text for each prediction
+
+### 3. Make Predictions (Python API)
 
 #### Single Alert Prediction
 
@@ -147,167 +165,19 @@ for feat in result['top_features']:
 
 ```python
 {
-    'prediction': 0 or 1,          # 0=Normal, 1=Malicious
-    'probability': 0.0 to 1.0,      # Probability of being malicious
+    'prediction': 0 or 1,
+    'probability': 0.0 to 1.0,
     'label': 'Normal' or 'Malicious',
     'top_features': [
         {
-            'feature': str,         # Feature name
-            'value': Any,           # Original feature value
-            'contribution': float    # SHAP value (positive = pushes toward Malicious, negative = pushes toward Normal)
+            'feature': str,
+            'value': Any,
+            'contribution': float
         },
         ...
     ],
-    'explanation_text': str         # Human-readable explanation
+    'explanation_text': str
 }
-```
-
-### 3. HTTP API
-
-Start the FastAPI server:
-
-```bash
-python api.py
-```
-
-The API will be available at `http://localhost:8000`
-
-#### API Endpoints
-
-##### Health Check
-
-```bash
-GET /health
-```
-
-Response:
-```json
-{
-  "status": "ok"
-}
-```
-
-##### Predict (without explanation)
-
-```bash
-POST /predict
-Content-Type: application/json
-
-{
-  "Source_IP": "192.168.0.1",
-  "Destination_IP": "10.0.0.3",
-  "Protocol": "TCP",
-  "Packet_Length": 1500,
-  "Duration": 2.5,
-  "Source_Port": 80,
-  "Destination_Port": 443,
-  "Bytes_Sent": 1000,
-  "Bytes_Received": 2000,
-  "Flags": "SYN",
-  "Flow_Packets_s": 30.5,
-  "Flow_Bytes_s": 1500.0,
-  "Avg_Packet_Size": 512,
-  "Total_Fwd_Packets": 25,
-  "Total_Bwd_Packets": 30,
-  "Fwd_Header_Length": 256,
-  "Bwd_Header_Length": 256,
-  "Sub_Flow_Fwd_Bytes": 800,
-  "Sub_Flow_Bwd_Bytes": 1200,
-  "Inbound": 1
-}
-```
-
-Response:
-```json
-{
-  "prediction": 1,
-  "probability": 0.85,
-  "label": "Malicious"
-}
-```
-
-##### Predict with Explanation
-
-```bash
-POST /predict_with_explanation?top_k=5
-Content-Type: application/json
-
-{
-  "Source_IP": "192.168.0.1",
-  "Destination_IP": "10.0.0.3",
-  "Protocol": "TCP",
-  "Packet_Length": 1500,
-  "Duration": 2.5,
-  "Source_Port": 80,
-  "Destination_Port": 443,
-  "Bytes_Sent": 1000,
-  "Bytes_Received": 2000,
-  "Flags": "SYN",
-  "Flow_Packets_s": 30.5,
-  "Flow_Bytes_s": 1500.0,
-  "Avg_Packet_Size": 512,
-  "Total_Fwd_Packets": 25,
-  "Total_Bwd_Packets": 30,
-  "Fwd_Header_Length": 256,
-  "Bwd_Header_Length": 256,
-  "Sub_Flow_Fwd_Bytes": 800,
-  "Sub_Flow_Bwd_Bytes": 1200,
-  "Inbound": 1
-}
-```
-
-Response:
-```json
-{
-  "prediction": 1,
-  "probability": 0.85,
-  "label": "Malicious",
-  "top_features": [
-    {
-      "feature": "Flow_Packets/s",
-      "value": 30.5,
-      "contribution": 0.15
-    },
-    {
-      "feature": "Sub_Flow_Bwd_Bytes",
-      "value": 1200,
-      "contribution": 0.12
-    },
-    ...
-  ],
-  "explanation_text": "The alert was classified as Malicious mainly because: Flow Packets/s is high (30.50), Sub Flow Bwd Bytes is high (1200.00)."
-}
-```
-
-**Note**: In the API, use `Flow_Packets_s` and `Flow_Bytes_s` (with underscore) instead of `Flow_Packets/s` and `Flow_Bytes/s` (with slash) in the JSON request body. The API automatically maps these to the correct column names.
-
-#### Example using curl
-
-```bash
-# Health check
-curl http://localhost:8000/health
-
-# Predict
-curl -X POST http://localhost:8000/predict \
-  -H "Content-Type: application/json" \
-  -d '{
-    "Source_IP": "192.168.0.1",
-    "Destination_IP": "10.0.0.3",
-    "Protocol": "TCP",
-    "Packet_Length": 1500,
-    "Flow_Packets_s": 30.5
-  }'
-
-# Predict with explanation
-curl -X POST "http://localhost:8000/predict_with_explanation?top_k=5" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "Source_IP": "192.168.0.1",
-    "Destination_IP": "10.0.0.3",
-    "Protocol": "TCP",
-    "Packet_Length": 1500,
-    "Flow_Packets_s": 30.5
-  }'
 ```
 
 ## Explainable AI (XAI)
