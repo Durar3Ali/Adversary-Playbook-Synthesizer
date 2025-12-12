@@ -1,14 +1,57 @@
-# Cyber Security Alert Classification Model
+# Adversary-Playbook Synthesizer
 
-This machine learning model predicts whether a cyber security alert is **Normal** (0) or **Malicious** (1) based on network traffic features. The model includes **Explainable AI (XAI)** capabilities to provide insights into why each prediction was made.
+An intelligent cybersecurity alert analysis system that combines machine learning classification, explainable AI (XAI), automated playbook generation, comprehensive reporting, and AI-powered assistant capabilities.
 
 ## Overview
 
-The model uses a Random Forest classifier trained on the `cyberfeddefender_dataset.csv` dataset, which contains network flow features such as packet lengths, protocols, IP addresses, ports, and traffic statistics. The system provides both predictions and explanations using SHAP (SHapley Additive exPlanations) values.
+This system provides end-to-end security alert analysis with:
+- **Machine Learning Classification**: Random Forest model to classify alerts as Normal or Malicious
+- **Explainable AI (XAI)**: SHAP-based explanations for predictions
+- **Automated Playbook Generation**: Step-by-step response playbooks for malicious alerts
+- **Comprehensive Reporting**: Detailed reports with all analysis results
+- **AI Assistant**: LLM-powered security analyst assistant (Google Gemini)
+
+## System Architecture
+
+```
+Alert Input → ML Prediction → XAI Explanation → Playbook Generation → Report Generation → AI Analysis
+```
+
+## Features
+
+### 1. Alert Classification
+- Binary classification: Normal vs. Malicious alerts
+- Probability scores for confidence assessment
+- Threshold-based classification with optimal threshold tuning
+
+### 2. Explainable AI (XAI)
+- SHAP values for feature importance
+- Top contributing features identification
+- Human-readable explanations
+- Fallback to feature importances if SHAP unavailable
+
+### 3. Automated Playbook Generation
+- Automatic generation for malicious alerts
+- Step-by-step incident response procedures
+- Threat level assessment (CRITICAL, HIGH, MEDIUM)
+- Priority-based action items
+- Estimated response times
+
+### 4. Report Generation
+- Comprehensive JSON reports
+- All analysis results in structured format
+- Timestamp tracking
+- Exportable for documentation
+
+### 5. AI Assistant
+- LLM-powered security analyst using Google Gemini
+- Fallback to rule-based assistant
+- Context-aware alert analysis
+- Interactive Q&A capabilities
 
 ## Dataset
 
-The dataset contains 1,430 network alerts with the following attack types:
+The model is trained on `cyberfeddefender_dataset.csv` containing 1,430 network alerts:
 - **DDoS**: 377 samples
 - **Ransomware**: 361 samples
 - **Brute Force**: 352 samples
@@ -29,20 +72,34 @@ The model uses 21 features including:
 - **Test Accuracy**: ~74% (with default threshold)
 - **Training Accuracy**: ~100% (potential overfitting)
 - **ROC AUC Score**: 0.5285
+- **Optimal Threshold**: Automatically calculated based on ROC curve
 
-**Note**: The model shows bias toward predicting malicious alerts due to class imbalance (1090 malicious vs 340 normal). Further tuning may be needed for better Normal class detection.
+**Note**: The model shows bias toward predicting malicious alerts due to class imbalance (1090 malicious vs 340 normal).
 
-## Files
+## Project Structure
 
-- `ml_model.py` - Main training script, prediction function (`predict_alert`), and explanation function (`explain_alert`)
-- `app.py` - Streamlit web application with cyberpunk HUD theme
-- `cyber_alert_model.pkl` - Trained model (created after running ml_model.py)
-- `cyberfeddefender_dataset.csv` - Training dataset
-- `requirements.txt` - Python dependencies
+```
+Adversary-Playbook Synthesizer/
+├── ml_model.py              # ML model training, prediction, and XAI explanations
+├── app.py                   # Streamlit web application (main interface)
+├── ai_assistant.py          # AI assistant with Gemini LLM support
+├── playbook_generator.py    # Automated playbook generation for malicious alerts
+├── report_generator.py      # Comprehensive report generation
+├── cyber_alert_model.pkl    # Trained model (generated after training)
+├── cyberfeddefender_dataset.csv  # Training dataset
+├── requirements.txt         # Python dependencies
+├── reports/                 # Generated report files (JSON)
+└── README.md               # This file
+```
 
-## Requirements
+## Installation
 
-Install required packages:
+### Prerequisites
+
+- Python 3.8 or higher
+- pip package manager
+
+### Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -51,14 +108,14 @@ pip install -r requirements.txt
 Or manually:
 
 ```bash
-pip install pandas numpy scikit-learn shap streamlit
+pip install pandas numpy scikit-learn shap streamlit google-generativeai
 ```
 
-## Usage
+## Quick Start
 
 ### 1. Train the Model
 
-Run the training script:
+First, train the machine learning model:
 
 ```bash
 python ml_model.py
@@ -67,12 +124,12 @@ python ml_model.py
 This will:
 - Load and preprocess the dataset
 - Train a Random Forest classifier
-- Evaluate the model performance
+- Evaluate model performance
 - Save the trained model to `cyber_alert_model.pkl`
 
-### 2. Run the Streamlit Web Application
+### 2. Run the Application
 
-Start the Streamlit app:
+Start the Streamlit web application:
 
 ```bash
 streamlit run app.py
@@ -80,15 +137,74 @@ streamlit run app.py
 
 The application will open in your browser at `http://localhost:8501`
 
-#### Features
+### 3. Configure AI Assistant (Optional)
 
-- **Predefined Scenarios**: Click buttons to analyze pre-configured alert scenarios using the real model
-- **Custom Alert Input**: Fill out a form to analyze custom alerts with the real model
-- **Real-time Analysis**: All predictions use the actual trained Random Forest model with SHAP explanations
-- **Alert Stream**: View history of analyzed alerts
-- **Detailed Explanations**: See top contributing features and explanation text for each prediction
+The application automatically attempts to initialize a Gemini assistant using the `GEMINI_API_KEY` environment variable. You can set it in two ways:
 
-### 3. Make Predictions (Python API)
+#### Option 1: Using `.env` file (Recommended)
+
+1. Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` and add your Gemini API key:
+   ```
+   GEMINI_API_KEY=your-api-key-here
+   ```
+
+3. The application will automatically load the `.env` file when it starts.
+
+**Get your API key from:** https://makersuite.google.com/app/apikey
+
+#### Option 2: Using Environment Variables
+
+**On Linux/macOS:**
+```bash
+export GEMINI_API_KEY="your-api-key-here"
+```
+
+**On Windows (PowerShell):**
+```powershell
+$env:GEMINI_API_KEY="your-api-key-here"
+```
+
+**On Windows (Command Prompt):**
+```cmd
+set GEMINI_API_KEY=your-api-key-here
+```
+
+**Note:** 
+- The `.env` file is automatically ignored by git (see `.gitignore`)
+- If the API key is not set, the application will run without the AI Assistant feature (using the simple rule-based fallback)
+
+## Usage
+
+### Web Application Features
+
+#### Alert Analysis Tab
+- **Predefined Scenarios**: Analyze pre-configured benign and malignant scenarios
+- **Custom Alert Input**: Create and analyze custom alerts
+- **Real-time Analysis**: All predictions use the trained model with SHAP explanations
+
+#### Alert Details Tab
+- View detailed analysis of any analyzed alert
+- See classification results, explanations, and top contributing features
+- View generated playbooks for malicious alerts
+- Review AI assistant analysis
+
+#### Reports Tab
+- Browse all generated reports
+- View comprehensive report details
+- Download reports as JSON files
+
+#### AI Assistant Tab
+- Interactive chat interface
+- Ask questions about alerts
+- Get context-aware answers
+- Suggested questions provided
+
+### Python API Usage
 
 #### Single Alert Prediction
 
@@ -120,37 +236,13 @@ alert = {
 
 result = predict_alert(alert)
 print(f"Prediction: {result['label']}")  # 'Normal' or 'Malicious'
-print(f"Probability: {result['probability']:.4f}")  # Probability of being malicious
-print(f"Prediction Code: {result['prediction']}")  # 0=Normal, 1=Malicious
+print(f"Probability: {result['probability']:.4f}")
 ```
 
-#### Single Alert Prediction with Explanation (XAI)
+#### Alert Explanation (XAI)
 
 ```python
 from ml_model import explain_alert
-
-alert = {
-    'Source_IP': '192.168.0.1',
-    'Destination_IP': '10.0.0.3',
-    'Protocol': 'TCP',
-    'Packet_Length': 1500,
-    'Duration': 2.5,
-    'Source_Port': 80,
-    'Destination_Port': 443,
-    'Bytes_Sent': 1000,
-    'Bytes_Received': 2000,
-    'Flags': 'SYN',
-    'Flow_Packets/s': 30.5,
-    'Flow_Bytes/s': 1500.0,
-    'Avg_Packet_Size': 512,
-    'Total_Fwd_Packets': 25,
-    'Total_Bwd_Packets': 30,
-    'Fwd_Header_Length': 256,
-    'Bwd_Header_Length': 256,
-    'Sub_Flow_Fwd_Bytes': 800,
-    'Sub_Flow_Bwd_Bytes': 1200,
-    'Inbound': 1
-}
 
 result = explain_alert(alert, top_k=5)
 print(f"Prediction: {result['label']}")
@@ -158,78 +250,75 @@ print(f"Probability: {result['probability']:.4f}")
 print(f"\nExplanation: {result['explanation_text']}")
 print("\nTop Contributing Features:")
 for feat in result['top_features']:
-    print(f"  - {feat['feature']}: value={feat['value']}, contribution={feat['contribution']:.4f}")
+    print(f"  - {feat['feature']}: {feat['value']}, contribution={feat['contribution']:.4f}")
 ```
 
-**Output Format for `explain_alert()`:**
+#### Generate Playbook
 
 ```python
-{
-    'prediction': 0 or 1,
-    'probability': 0.0 to 1.0,
-    'label': 'Normal' or 'Malicious',
-    'top_features': [
-        {
-            'feature': str,
-            'value': Any,
-            'contribution': float
-        },
-        ...
-    ],
-    'explanation_text': str
-}
+from playbook_generator import generate_playbook
+
+playbook = generate_playbook(alert_data, prediction_result, explanation)
+if playbook.get('playbook_required'):
+    print(f"Threat Level: {playbook['threat_level']}")
+    print(f"Priority: {playbook['priority']}")
+    for step in playbook['steps']:
+        print(f"\nStep {step['step_number']}: {step['title']}")
+        for action in step['actions']:
+            print(f"  - {action}")
 ```
 
-## Explainable AI (XAI)
+#### Generate Report
 
-The model includes explainability features using **SHAP (SHapley Additive exPlanations)** values. For each prediction, the system:
+```python
+from report_generator import generate_report, save_report
 
-1. **Computes SHAP values** using TreeExplainer (optimized for Random Forest models)
-2. **Identifies top contributing features** that most influence the prediction
-3. **Generates human-readable explanations** describing why the alert was classified as Normal or Malicious
+report = generate_report(alert_data, prediction_result, explanation, playbook)
+report_path = save_report(report)
+print(f"Report saved to: {report_path}")
+```
 
-### How it works
+#### Use AI Assistant
 
-- **SHAP values** represent the contribution of each feature to the prediction
-  - Positive values push toward "Malicious" classification
-  - Negative values push toward "Normal" classification
-  - Larger absolute values indicate stronger influence
+```python
+from ai_assistant import create_assistant
 
-- **Top features** are ranked by absolute SHAP value, showing which features had the most impact
+# Create Gemini assistant
+assistant = create_assistant(
+    use_llm=True,
+    llm_provider="gemini",
+    api_key="your-api-key",
+    model="gemini-1.5-flash"
+)
 
-- **Explanation text** is automatically generated from the top contributing features and their values
+# Use simple rule-based assistant (no API key needed)
+assistant = create_assistant(use_llm=False)
 
-### Fallback behavior
+# Analyze alert
+analysis = assistant.analyze_alert(alert_data, prediction, explanation, playbook)
 
-If SHAP is not available or fails, the system falls back to using feature importances from the Random Forest model combined with the instance's feature values to compute contributions.
+# Answer questions
+context = {
+    'prediction': prediction,
+    'explanation': explanation,
+    'playbook': playbook
+}
+answer = assistant.answer_question("Why was this classified as malicious?", context)
+```
 
-## Model Details
+## Output Formats
 
-- **Algorithm**: Random Forest Classifier
-- **Parameters**:
-  - n_estimators: 200
-  - max_depth: 25
-  - min_samples_split: 10
-  - min_samples_leaf: 4
-  - class_weight: 'balanced' (handles class imbalance)
-- **Feature Engineering**: 
-  - Label encoding for categorical features (Protocol, Flags, Source_IP, Destination_IP)
-  - Derived feature: `same_source_dest_ip`
-  - Missing values filled with median values
-
-## Output Format
-
-### `predict_alert()` returns:
+### Prediction Result
 
 ```python
 {
     'prediction': 0 or 1,          # 0=Normal, 1=Malicious
-    'probability': 0.0 to 1.0,      # Probability of being malicious
+    'probability': 0.0 to 1.0,     # Probability of being malicious
     'label': 'Normal' or 'Malicious'
 }
 ```
 
-### `explain_alert()` returns:
+### Explanation Result
 
 ```python
 {
@@ -248,24 +337,96 @@ If SHAP is not available or fails, the system falls back to using feature import
 }
 ```
 
+### Playbook Structure
+
+```python
+{
+    'playbook_required': bool,
+    'threat_level': 'CRITICAL' | 'HIGH' | 'MEDIUM',
+    'priority': 'IMMEDIATE' | 'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW',
+    'steps': [
+        {
+            'step_number': int,
+            'title': str,
+            'actions': [str, ...],
+            'estimated_time': str,
+            'priority': str
+        },
+        ...
+    ],
+    'recommendations': [str, ...],
+    'attack_indicators': [str, ...]
+}
+```
+
+## Model Details
+
+### Algorithm
+- **Random Forest Classifier** with balanced class weights
+
+### Parameters
+- `n_estimators`: 200
+- `max_depth`: 25
+- `min_samples_split`: 10
+- `min_samples_leaf`: 4
+- `class_weight`: 'balanced' (handles class imbalance)
+- `max_features`: 'sqrt'
+- `bootstrap`: True
+- `oob_score`: True
+
+### Feature Engineering
+- Label encoding for categorical features (Protocol, Flags, Source_IP, Destination_IP)
+- Derived feature: `same_source_dest_ip`
+- Missing values filled with median values
+
+## Explainable AI (XAI)
+
+The system uses **SHAP (SHapley Additive exPlanations)** values for explainability:
+
+1. **SHAP TreeExplainer**: Optimized for Random Forest models
+2. **Feature Contributions**: Positive values push toward "Malicious", negative toward "Normal"
+3. **Top Features**: Ranked by absolute SHAP value
+4. **Fallback**: Uses feature importances if SHAP unavailable
+
+## AI Assistant
+
+The AI Assistant module uses Google Gemini:
+
+### Google Gemini
+- Models: `gemini-1.5-flash` (default), `gemini-1.5-pro`, or other Gemini models
+- Requires: `GEMINI_API_KEY` environment variable or API key parameter
+
+### Simple Rule-Based Assistant
+- No API key required
+- Fallback when LLM is unavailable
+- Basic rule-based analysis
+
 ## Limitations
 
-1. **Class Imbalance**: The dataset has more malicious samples than normal, causing the model to be biased toward predicting malicious alerts.
-
-2. **Overfitting**: The model achieves 100% training accuracy, suggesting possible overfitting. Consider:
-   - Using cross-validation
-   - Adding more regularization
-   - Collecting more training data
-
-3. **Feature Engineering**: Limited feature engineering was performed. Consider:
-   - More domain-specific features
-   - Feature selection
-   - Different encoding schemes for IP addresses
+1. **Class Imbalance**: Dataset has more malicious samples, causing bias toward malicious predictions
+2. **Overfitting**: High training accuracy suggests possible overfitting
+3. **Feature Engineering**: Limited domain-specific feature engineering
+4. **Model Selection**: Only Random Forest implemented (no hyperparameter tuning)
 
 ## Future Improvements
 
-- Implement SMOTE or other oversampling techniques for better class balance
-- Add cross-validation for more robust evaluation
-- Try different algorithms (XGBoost, Gradient Boosting, Neural Networks)
+- Implement SMOTE or other oversampling techniques
+- Add cross-validation for robust evaluation
+- Try alternative algorithms (XGBoost, Gradient Boosting, Neural Networks)
 - Feature selection to remove redundant features
 - Hyperparameter tuning using GridSearchCV or RandomizedSearchCV
+- Enhanced playbook templates
+- Multi-language support for reports
+- Integration with SIEM systems
+
+## License
+
+This project is provided as-is for educational and research purposes.
+
+## Contributing
+
+Contributions, issues, and feature requests are welcome!
+
+## Contact
+
+For questions or support, please open an issue in the repository.

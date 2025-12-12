@@ -158,9 +158,9 @@ def explain_alert(alert_data, model_path='cyber_alert_model.pkl', threshold=None
     
     # Compute explanations
     top_features = []
-    use_shap = SHAP_AVAILABLE  # Use local variable to avoid UnboundLocalError
+    shap_succeeded = False
     
-    if use_shap:
+    if SHAP_AVAILABLE:
         try:
             # Use SHAP TreeExplainer for RandomForest
             explainer = shap.TreeExplainer(model)
@@ -207,13 +207,13 @@ def explain_alert(alert_data, model_path='cyber_alert_model.pkl', threshold=None
             # Sort by absolute contribution and take top_k
             feature_contributions.sort(key=lambda x: abs(x['contribution']), reverse=True)
             top_features = feature_contributions[:top_k]
+            shap_succeeded = True
             
         except Exception as e:
             warnings.warn(f"SHAP explanation failed: {e}. Falling back to feature importances.")
-            use_shap = False
     
     # Fallback to feature importances if SHAP not available or failed
-    if not use_shap or len(top_features) == 0:
+    if not shap_succeeded or len(top_features) == 0:
         feature_importances = model.feature_importances_
         feature_names = X_pred.columns.tolist()
         

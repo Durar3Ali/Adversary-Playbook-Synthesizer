@@ -1,0 +1,68 @@
+{
+  "report_id": "RPT-20251211-193648",
+  "generated_at": "2025-12-11T19:36:48.728328",
+  "alert_classification": {
+    "label": "Normal",
+    "probability": 0.6432875102272045,
+    "prediction_code": 0,
+    "confidence": "MEDIUM"
+  },
+  "alert_data": {
+    "Source_IP": "203.0.113.45",
+    "Destination_IP": "10.0.0.5",
+    "Protocol": "TCP",
+    "Packet_Length": 1500,
+    "Duration": 60.0,
+    "Source_Port": 54321,
+    "Destination_Port": 22,
+    "Bytes_Sent": 1000000,
+    "Bytes_Received": 20000,
+    "Flags": "RST",
+    "Flow_Packets/s": 2000.0,
+    "Flow_Bytes/s": 500000.0,
+    "Avg_Packet_Size": 2000,
+    "Total_Fwd_Packets": 20000,
+    "Total_Bwd_Packets": 200,
+    "Fwd_Header_Length": 4000,
+    "Bwd_Header_Length": 10,
+    "Sub_Flow_Fwd_Bytes": 950000,
+    "Sub_Flow_Bwd_Bytes": 15000,
+    "Inbound": 1
+  },
+  "explanation": {
+    "summary": "The alert was classified as Normal mainly because: Bytes Sent is high, Sub Flow Fwd Bytes is high, Flow Bytes/s is high (500000.00).",
+    "top_features": [
+      {
+        "feature": "Bytes_Sent",
+        "value": 1000000,
+        "contribution": 78488.23011421715
+      },
+      {
+        "feature": "Sub_Flow_Fwd_Bytes",
+        "value": 950000,
+        "contribution": 77619.58318869614
+      },
+      {
+        "feature": "Flow_Bytes/s",
+        "value": 500000.0,
+        "contribution": 39783.78207109517
+      },
+      {
+        "feature": "Source_Port",
+        "value": 54321,
+        "contribution": 1567.0386767173643
+      },
+      {
+        "feature": "Bytes_Received",
+        "value": 20000,
+        "contribution": 1475.3711053812674
+      }
+    ]
+  },
+  "playbook": null,
+  "metadata": {
+    "report_version": "1.0",
+    "system": "Adversary-Playbook Synthesizer",
+    "model_version": "cyber_alert_model_v1"
+  }
+}

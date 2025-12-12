@@ -1,0 +1,176 @@
+{
+  "report_id": "RPT-20251212-131800",
+  "generated_at": "2025-12-12T13:18:00.267554",
+  "alert_classification": {
+    "label": "Malicious",
+    "probability": 0.95,
+    "prediction_code": 1,
+    "confidence": "HIGH"
+  },
+  "alert_data": {
+    "Source_IP": "203.0.113.99",
+    "Destination_IP": "10.0.0.5",
+    "Protocol": "TCP",
+    "Packet_Length": 1500,
+    "Duration": 120.0,
+    "Source_Port": 65534,
+    "Destination_Port": 22,
+    "Bytes_Sent": 5000000,
+    "Bytes_Received": 50000,
+    "Flags": "RST",
+    "Flow_Packets/s": 10000.0,
+    "Flow_Bytes/s": 2000000.0,
+    "Avg_Packet_Size": 5000,
+    "Total_Fwd_Packets": 500000,
+    "Total_Bwd_Packets": 1000,
+    "Fwd_Header_Length": 10000,
+    "Bwd_Header_Length": 1,
+    "Sub_Flow_Fwd_Bytes": 4800000,
+    "Sub_Flow_Bwd_Bytes": 45000,
+    "Inbound": 1
+  },
+  "explanation": {
+    "summary": "The alert was classified as Malicious with 95.0% confidence. This indicates a clear security threat requiring immediate action. Key indicators include: Flow Bytes/s is extremely high (2,000,000). These patterns are consistent with brute force attacks and require immediate containment.",
+    "top_features": [
+      {
+        "feature": "Bytes_Sent",
+        "value": 5000000,
+        "contribution": 392441.1505710858
+      },
+      {
+        "feature": "Sub_Flow_Fwd_Bytes",
+        "value": 4800000,
+        "contribution": 392183.1571639384
+      },
+      {
+        "feature": "Flow_Bytes/s",
+        "value": 2000000.0,
+        "contribution": 159135.12828438068
+      },
+      {
+        "feature": "Total_Fwd_Packets",
+        "value": 500000,
+        "contribution": 35994.55389084186
+      },
+      {
+        "feature": "Sub_Flow_Bwd_Bytes",
+        "value": 45000,
+        "contribution": 3721.0834107512974
+      }
+    ]
+  },
+  "playbook": {
+    "playbook_required": true,
+    "threat_level": "CRITICAL",
+    "priority": "IMMEDIATE",
+    "generated_at": "2025-12-12T13:18:00.267364",
+    "alert_summary": {
+      "source_ip": "203.0.113.99",
+      "destination_ip": "10.0.0.5",
+      "protocol": "TCP",
+      "malicious_probability": "95.00%"
+    },
+    "attack_indicators": [
+      "Anomalous data transfer",
+      "High network activity detected",
+      "Anomalous data transfer",
+      "High network activity detected",
+      "Anomalous data transfer"
+    ],
+    "steps": [
+      {
+        "step_number": 1,
+        "title": "Immediate Containment",
+        "actions": [
+          "Block source IP: 203.0.113.99",
+          "Block destination IP: 10.0.0.5 if compromised",
+          "Isolate affected systems from network",
+          "Preserve logs and evidence"
+        ],
+        "estimated_time": "5-10 minutes",
+        "priority": "CRITICAL"
+      },
+      {
+        "step_number": 2,
+        "title": "Threat Investigation",
+        "actions": [
+          "Review security logs for related activities",
+          "Check for lateral movement indicators",
+          "Analyze network traffic patterns",
+          "Review authentication logs",
+          "Check for data exfiltration attempts"
+        ],
+        "estimated_time": "15-30 minutes",
+        "priority": "HIGH"
+      },
+      {
+        "step_number": 3,
+        "title": "Impact Assessment",
+        "actions": [
+          "Identify affected systems and data",
+          "Assess potential data breach scope",
+          "Determine if sensitive information was accessed",
+          "Evaluate business impact",
+          "Document findings"
+        ],
+        "estimated_time": "30-60 minutes",
+        "priority": "HIGH"
+      },
+      {
+        "step_number": 4,
+        "title": "Remediation Actions",
+        "actions": [
+          "Reset compromised credentials",
+          "Apply security patches if applicable",
+          "Update firewall rules",
+          "Review and update security policies",
+          "Implement additional monitoring"
+        ],
+        "estimated_time": "1-2 hours",
+        "priority": "MEDIUM"
+      },
+      {
+        "step_number": 5,
+        "title": "Recovery & Hardening",
+        "actions": [
+          "Restore systems from clean backups if needed",
+          "Implement additional security controls",
+          "Conduct security awareness training",
+          "Review incident response procedures",
+          "Update threat intelligence"
+        ],
+        "estimated_time": "2-4 hours",
+        "priority": "MEDIUM"
+      },
+      {
+        "step_number": 6,
+        "title": "Documentation & Reporting",
+        "actions": [
+          "Document incident timeline",
+          "Create incident report",
+          "Notify relevant stakeholders",
+          "File regulatory reports if required",
+          "Conduct post-incident review"
+        ],
+        "estimated_time": "1-2 hours",
+        "priority": "LOW"
+      }
+    ],
+    "recommendations": [
+      "Enable real-time monitoring for similar attack patterns",
+      "Review and update intrusion detection rules",
+      "Consider implementing network segmentation",
+      "Enhance endpoint detection and response capabilities"
+    ],
+    "total_estimated_time": "4-8 hours",
+    "contact_info": {
+      "incident_response_team": "security@company.com",
+      "emergency_hotline": "+1-XXX-XXX-XXXX"
+    }
+  },
+  "metadata": {
+    "report_version": "1.0",
+    "system": "Adversary-Playbook Synthesizer",
+    "model_version": "cyber_alert_model_v1"
+  }
+}
