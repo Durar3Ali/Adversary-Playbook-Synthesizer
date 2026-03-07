@@ -1,103 +1,79 @@
 # Adversary-Playbook Synthesizer
 
-An intelligent cybersecurity alert analysis system that combines machine learning classification, explainable AI (XAI), automated playbook generation, comprehensive reporting, and AI-powered assistant capabilities.
+An intelligent cybersecurity alert analysis system that combines machine learning classification, explainable AI (XAI), automated playbook generation, comprehensive reporting, and an AI-powered analyst assistant.
 
 ## Overview
 
-This system provides end-to-end security alert analysis with:
-- **Machine Learning Classification**: Random Forest model to classify alerts as Normal or Malicious
-- **Explainable AI (XAI)**: SHAP-based explanations for predictions
-- **Automated Playbook Generation**: Step-by-step response playbooks for malicious alerts
-- **Comprehensive Reporting**: Detailed reports with all analysis results
-- **AI Assistant**: LLM-powered security analyst assistant (Google Gemini)
-
-## System Architecture
+The system provides an end-to-end security alert analysis pipeline:
 
 ```
 Alert Input → ML Prediction → XAI Explanation → Playbook Generation → Report Generation → AI Analysis
 ```
 
-## Features
+Key capabilities:
+- **Machine Learning Classification** — Random Forest model classifies alerts as Normal or Malicious
+- **Explainable AI (XAI)** — SHAP-based explanations identify the top contributing features
+- **Automated Playbook Generation** — Data-driven, step-by-step incident response playbooks
+- **Comprehensive Reporting** — Structured JSON reports covering all analysis results
+- **AI Assistant** — Google Gemini LLM assistant with a rule-based fallback
 
-### 1. Alert Classification
-- Binary classification: Normal vs. Malicious alerts
-- Probability scores for confidence assessment
-- Threshold-based classification with optimal threshold tuning
-
-### 2. Explainable AI (XAI)
-- SHAP values for feature importance
-- Top contributing features identification
-- Human-readable explanations
-- Fallback to feature importances if SHAP unavailable
-
-### 3. Automated Playbook Generation
-- Automatic generation for malicious alerts
-- Step-by-step incident response procedures
-- Threat level assessment (CRITICAL, HIGH, MEDIUM)
-- Priority-based action items
-- Estimated response times
-
-### 4. Report Generation
-- Comprehensive JSON reports
-- All analysis results in structured format
-- Timestamp tracking
-- Exportable for documentation
-
-### 5. AI Assistant
-- LLM-powered security analyst using Google Gemini
-- Fallback to rule-based assistant
-- Context-aware alert analysis
-- Interactive Q&A capabilities
-
-## Dataset
-
-The model is trained on `cyberfeddefender_dataset.csv` containing 1,430 network alerts:
-- **DDoS**: 377 samples
-- **Ransomware**: 361 samples
-- **Brute Force**: 352 samples
-- **Normal**: 340 samples
-
-## Features Used
-
-The model uses 21 features including:
-- Network flow characteristics (Packet_Length, Duration, Bytes_Sent, Bytes_Received)
-- Protocol and port information (Protocol, Source_Port, Destination_Port)
-- Traffic statistics (Flow_Packets/s, Flow_Bytes/s, Avg_Packet_Size)
-- Packet counts and header lengths
-- IP addresses (encoded)
-- Derived feature: `same_source_dest_ip` (indicates if source and destination IPs are the same)
-
-## Model Performance
-
-- **Test Accuracy**: ~74% (with default threshold)
-- **Training Accuracy**: ~100% (potential overfitting)
-- **ROC AUC Score**: 0.5285
-- **Optimal Threshold**: Automatically calculated based on ROC curve
-
-**Note**: The model shows bias toward predicting malicious alerts due to class imbalance (1090 malicious vs 340 normal).
+---
 
 ## Project Structure
 
 ```
 Adversary-Playbook Synthesizer/
-├── ml_model.py              # ML model training, prediction, and XAI explanations
-├── app.py                   # Streamlit web application (main interface)
-├── ai_assistant.py          # AI assistant with Gemini LLM support
-├── playbook_generator.py    # Automated playbook generation for malicious alerts
-├── report_generator.py      # Comprehensive report generation
-├── cyber_alert_model.pkl    # Trained model (generated after training)
+├── app.py                        # Streamlit UI (thin shell — no business logic)
+├── model_trainer.py              # Standalone training script (run to (re)train the model)
+├── config.py                     # Central configuration (defaults + env-var overrides)
+├── conftest.py                   # pytest root configuration
+│
+├── src/                          # Application packages
+│   ├── ml/
+│   │   └── model_predictor.py    # predict_alert, explain_alert, load_model
+│   ├── analysis/
+│   │   ├── pipeline.py           # Pure business-logic orchestration (no Streamlit)
+│   │   ├── playbook_generator.py # Data-driven playbook generation
+│   │   └── report_generator.py   # Report generation and serialisation
+│   └── assistant/
+│       ├── base.py               # BaseAssistant ABC
+│       ├── simple.py             # Rule-based fallback assistant
+│       ├── gemini.py             # Google Gemini assistant
+│       └── factory.py            # create_assistant() factory
+│
+├── tests/                        # pytest unit tests
+│   ├── test_model_predictor.py
+│   ├── test_playbook_generator.py
+│   ├── test_report_generator.py
+│   └── test_ai_assistant.py
+│
+├── .streamlit/
+│   └── config.toml               # Streamlit theme (HUD colour palette)
+│
+│ — Backward-compatibility shims (forward to src.*) —
+├── ml_model.py
+├── ai_assistant.py
+├── playbook_generator.py
+├── report_generator.py
+├── model_predictor.py
+├── analysis_pipeline.py
+│
+├── cyber_alert_model.pkl         # Trained model (generated by model_trainer.py)
 ├── cyberfeddefender_dataset.csv  # Training dataset
-├── requirements.txt         # Python dependencies
-├── reports/                 # Generated report files (JSON)
-└── README.md               # This file
+├── scenarios.json                # Predefined analysis scenarios (editable)
+├── requirements.txt              # Python dependencies
+├── .env.example                  # Environment variable reference
+└── reports/                      # Generated JSON report files
 ```
+
+---
 
 ## Installation
 
 ### Prerequisites
 
-- Python 3.8 or higher
-- pip package manager
+- Python 3.9 or higher
+- pip
 
 ### Install Dependencies
 
@@ -105,328 +81,265 @@ Adversary-Playbook Synthesizer/
 pip install -r requirements.txt
 ```
 
-Or manually:
+This installs: `pandas`, `numpy`, `scikit-learn`, `shap`, `streamlit`, `google-generativeai`, `python-dotenv`, `pytest`.
+
+---
+
+## Configuration
+
+All tunable values live in `config.py`, which reads overrides from environment variables (`.env` file or the shell). Only `GEMINI_API_KEY` is required; everything else has a sensible default.
+
+### Setup
 
 ```bash
-pip install pandas numpy scikit-learn shap streamlit google-generativeai
+cp .env.example .env
+# Edit .env and set at minimum:
+#   GEMINI_API_KEY=your-key-here
 ```
+
+### Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `GEMINI_API_KEY` | _(none)_ | Google Gemini API key (required for AI Assistant) |
+| `MODEL_PATH` | `cyber_alert_model.pkl` | Path to the trained model |
+| `DATASET_PATH` | `cyberfeddefender_dataset.csv` | Training dataset |
+| `REPORTS_DIR` | `reports` | Directory for JSON reports |
+| `SCENARIOS_FILE` | `scenarios.json` | Predefined scenarios file |
+| `APP_NAME` | `Adversary-Playbook Synthesizer` | Application name |
+| `GEMINI_MODEL` | `gemini-1.5-flash` | Gemini model identifier |
+| `GEMINI_TEMPERATURE_ANALYSIS` | `0.3` | Temperature for analysis calls |
+| `GEMINI_TEMPERATURE_CHAT` | `0.5` | Temperature for chat/Q&A calls |
+| `GEMINI_MAX_TOKENS_ANALYSIS` | `1000` | Max tokens for analysis calls |
+| `GEMINI_MAX_TOKENS_CHAT` | `500` | Max tokens for chat calls |
+| `INCIDENT_RESPONSE_EMAIL` | `security@company.com` | Contact email in playbooks |
+| `EMERGENCY_HOTLINE` | `+1-XXX-XXX-XXXX` | Hotline number in playbooks |
+
+### ML training constants
+
+Hyperparameters (`N_ESTIMATORS`, `MAX_DEPTH`, `RANDOM_STATE`, etc.) and the columns to drop during training (`FEATURES_TO_DROP`) are defined in `config.py`. Edit them there and re-run `python model_trainer.py` to retrain.
+
+### Predefined scenarios (`scenarios.json`)
+
+Add, remove, or edit scenarios in `scenarios.json` without touching any Python code. Each entry supports:
+- `description` — plain-text description shown in the UI
+- `force_malignant` — when `true`, forces the classification to Malicious regardless of the model output (useful for demo scenarios)
+- All network feature keys (`Source_IP`, `Protocol`, etc.)
+
+---
 
 ## Quick Start
 
 ### 1. Train the Model
 
-First, train the machine learning model:
-
 ```bash
-python ml_model.py
+python model_trainer.py
 ```
 
-This will:
-- Load and preprocess the dataset
-- Train a Random Forest classifier
-- Evaluate model performance
-- Save the trained model to `cyber_alert_model.pkl`
+This loads the dataset, trains a Random Forest classifier, evaluates it, and saves the model to `cyber_alert_model.pkl`.
 
 ### 2. Run the Application
-
-Start the Streamlit web application:
 
 ```bash
 streamlit run app.py
 ```
 
-The application will open in your browser at `http://localhost:8501`
+Opens at `http://localhost:8501`.
 
-### 3. Configure AI Assistant (Optional)
+### 3. Run the Tests
 
-The application automatically attempts to initialize a Gemini assistant using the `GEMINI_API_KEY` environment variable. You can set it in two ways:
-
-#### Option 1: Using `.env` file (Recommended)
-
-1. Copy the example environment file:
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Edit `.env` and add your Gemini API key:
-   ```
-   GEMINI_API_KEY=your-api-key-here
-   ```
-
-3. The application will automatically load the `.env` file when it starts.
-
-**Get your API key from:** https://makersuite.google.com/app/apikey
-
-#### Option 2: Using Environment Variables
-
-**On Linux/macOS:**
 ```bash
-export GEMINI_API_KEY="your-api-key-here"
+python -m pytest tests/ -v
 ```
 
-**On Windows (PowerShell):**
+### 4. Configure AI Assistant (Optional)
+
+The application automatically initialises a Gemini assistant from `GEMINI_API_KEY`. If the key is absent, the rule-based `SimpleAIAssistant` is used instead.
+
+**Using `.env` (recommended):**
+```bash
+cp .env.example .env
+# Add: GEMINI_API_KEY=your-api-key-here
+```
+
+**Using the shell directly:**
 ```powershell
-$env:GEMINI_API_KEY="your-api-key-here"
+$env:GEMINI_API_KEY="your-api-key-here"   # PowerShell
+```
+```bash
+export GEMINI_API_KEY="your-api-key-here"  # bash/zsh
 ```
 
-**On Windows (Command Prompt):**
-```cmd
-set GEMINI_API_KEY=your-api-key-here
+**Diagnose Gemini connectivity:**
+```bash
+python test_gemini_api.py
 ```
 
-**Note:** 
-- The `.env` file is automatically ignored by git (see `.gitignore`)
-- If the API key is not set, the application will run without the AI Assistant feature (using the simple rule-based fallback)
+---
 
-## Usage
+## Python API
 
-### Web Application Features
+All public symbols remain importable from the root-level shim modules for backward compatibility. The canonical locations are under `src.*`.
 
-#### Alert Analysis Tab
-- **Predefined Scenarios**: Analyze pre-configured benign and malignant scenarios
-- **Custom Alert Input**: Create and analyze custom alerts
-- **Real-time Analysis**: All predictions use the trained model with SHAP explanations
-
-#### Alert Details Tab
-- View detailed analysis of any analyzed alert
-- See classification results, explanations, and top contributing features
-- View generated playbooks for malicious alerts
-- Review AI assistant analysis
-
-#### Reports Tab
-- Browse all generated reports
-- View comprehensive report details
-- Download reports as JSON files
-
-#### AI Assistant Tab
-- Interactive chat interface
-- Ask questions about alerts
-- Get context-aware answers
-- Suggested questions provided
-
-### Python API Usage
-
-#### Single Alert Prediction
+### Single Alert Prediction
 
 ```python
-from ml_model import predict_alert
+from src.ml.model_predictor import load_model, predict_alert
 
-alert = {
-    'Source_IP': '192.168.0.1',
-    'Destination_IP': '10.0.0.3',
-    'Protocol': 'TCP',
-    'Packet_Length': 1500,
-    'Duration': 2.5,
-    'Source_Port': 80,
-    'Destination_Port': 443,
-    'Bytes_Sent': 1000,
-    'Bytes_Received': 2000,
-    'Flags': 'SYN',
-    'Flow_Packets/s': 30.5,
-    'Flow_Bytes/s': 1500.0,
-    'Avg_Packet_Size': 512,
-    'Total_Fwd_Packets': 25,
-    'Total_Bwd_Packets': 30,
-    'Fwd_Header_Length': 256,
-    'Bwd_Header_Length': 256,
-    'Sub_Flow_Fwd_Bytes': 800,
-    'Sub_Flow_Bwd_Bytes': 1200,
-    'Inbound': 1
-}
-
-result = predict_alert(alert)
-print(f"Prediction: {result['label']}")  # 'Normal' or 'Malicious'
-print(f"Probability: {result['probability']:.4f}")
+model_data = load_model()  # loads config.MODEL_PATH
+result = predict_alert(alert, model_data=model_data)
+print(result["label"])       # "Normal" or "Malicious"
+print(result["probability"]) # float 0–1
 ```
 
-#### Alert Explanation (XAI)
+### Alert Explanation (XAI)
 
 ```python
-from ml_model import explain_alert
+from src.ml.model_predictor import load_model, explain_alert
 
-result = explain_alert(alert, top_k=5)
-print(f"Prediction: {result['label']}")
-print(f"Probability: {result['probability']:.4f}")
-print(f"\nExplanation: {result['explanation_text']}")
-print("\nTop Contributing Features:")
-for feat in result['top_features']:
-    print(f"  - {feat['feature']}: {feat['value']}, contribution={feat['contribution']:.4f}")
+model_data = load_model()
+result = explain_alert(alert, model_data=model_data, top_k=5)
+print(result["explanation_text"])
+for feat in result["top_features"]:
+    print(f"  {feat['feature']}: {feat['value']}, contribution={feat['contribution']:.4f}")
 ```
 
-#### Generate Playbook
+### Generate Playbook
 
 ```python
-from playbook_generator import generate_playbook
+from src.analysis.playbook_generator import generate_playbook
 
 playbook = generate_playbook(alert_data, prediction_result, explanation)
-if playbook.get('playbook_required'):
+if playbook["playbook_required"]:
     print(f"Threat Level: {playbook['threat_level']}")
-    print(f"Priority: {playbook['priority']}")
-    for step in playbook['steps']:
-        print(f"\nStep {step['step_number']}: {step['title']}")
-        for action in step['actions']:
-            print(f"  - {action}")
+    for step in playbook["steps"]:
+        print(f"Step {step['step_number']}: {step['title']}")
 ```
 
-#### Generate Report
+### Generate Report
 
 ```python
-from report_generator import generate_report, save_report
+from src.analysis.report_generator import generate_report, save_report
 
 report = generate_report(alert_data, prediction_result, explanation, playbook)
-report_path = save_report(report)
-print(f"Report saved to: {report_path}")
+path = save_report(report)
+print(f"Saved to: {path}")
 ```
 
-#### Use AI Assistant
+### AI Assistant
 
 ```python
-from ai_assistant import create_assistant
+from src.assistant.factory import create_assistant
 
-# Create Gemini assistant
-assistant = create_assistant(
-    use_llm=True,
-    llm_provider="gemini",
-    api_key="your-api-key",
-    model="gemini-1.5-flash"
-)
+# LLM-powered (requires GEMINI_API_KEY)
+assistant = create_assistant(use_llm=True, llm_provider="gemini")
 
-# Use simple rule-based assistant (no API key needed)
+# Rule-based fallback (no API key)
 assistant = create_assistant(use_llm=False)
 
-# Analyze alert
 analysis = assistant.analyze_alert(alert_data, prediction, explanation, playbook)
-
-# Answer questions
-context = {
-    'prediction': prediction,
-    'explanation': explanation,
-    'playbook': playbook
-}
-answer = assistant.answer_question("Why was this classified as malicious?", context)
+answer   = assistant.answer_question("Why was this flagged?", context)
 ```
+
+---
 
 ## Output Formats
 
-### Prediction Result
+### Prediction result
+
+```python
+{"prediction": 0 | 1, "probability": float, "label": "Normal" | "Malicious"}
+```
+
+### Explanation result
 
 ```python
 {
-    'prediction': 0 or 1,          # 0=Normal, 1=Malicious
-    'probability': 0.0 to 1.0,     # Probability of being malicious
-    'label': 'Normal' or 'Malicious'
+    "prediction": int,
+    "probability": float,
+    "label": str,
+    "top_features": [{"feature": str, "value": Any, "contribution": float}, ...],
+    "explanation_text": str,
 }
 ```
 
-### Explanation Result
+### Playbook
 
 ```python
 {
-    'prediction': 0 or 1,
-    'probability': 0.0 to 1.0,
-    'label': 'Normal' or 'Malicious',
-    'top_features': [
-        {
-            'feature': str,
-            'value': Any,
-            'contribution': float
-        },
-        ...
-    ],
-    'explanation_text': str
+    "playbook_required": bool,
+    "threat_level": "CRITICAL" | "HIGH" | "MEDIUM",
+    "priority": "IMMEDIATE" | "URGENT" | "HIGH",
+    "steps": [{"step_number": int, "title": str, "actions": [...], "estimated_time": str, "priority": str}],
+    "recommendations": [str, ...],
+    "attack_indicators": [str, ...],
 }
 ```
 
-### Playbook Structure
+---
 
-```python
-{
-    'playbook_required': bool,
-    'threat_level': 'CRITICAL' | 'HIGH' | 'MEDIUM',
-    'priority': 'IMMEDIATE' | 'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW',
-    'steps': [
-        {
-            'step_number': int,
-            'title': str,
-            'actions': [str, ...],
-            'estimated_time': str,
-            'priority': str
-        },
-        ...
-    ],
-    'recommendations': [str, ...],
-    'attack_indicators': [str, ...]
-}
-```
+## Dataset
+
+Trained on `cyberfeddefender_dataset.csv` (1,430 network alerts):
+
+| Class | Samples |
+|---|---|
+| DDoS | 377 |
+| Ransomware | 361 |
+| Brute Force | 352 |
+| Normal | 340 |
 
 ## Model Details
 
-### Algorithm
-- **Random Forest Classifier** with balanced class weights
+| Parameter | Value |
+|---|---|
+| Algorithm | Random Forest |
+| n_estimators | 200 |
+| max_depth | 25 |
+| class_weight | balanced |
+| Test accuracy | ~74% |
+| Training accuracy | ~100% (overfitting) |
+| ROC AUC | 0.5285 |
 
-### Parameters
-- `n_estimators`: 200
-- `max_depth`: 25
-- `min_samples_split`: 10
-- `min_samples_leaf`: 4
-- `class_weight`: 'balanced' (handles class imbalance)
-- `max_features`: 'sqrt'
-- `bootstrap`: True
-- `oob_score`: True
+The AUC of ~0.53 is near random; a `force_malignant` flag in `scenarios.json` exists as a workaround for demo scenarios that the model misclassifies. Retraining on a larger, balanced dataset would resolve this.
 
-### Feature Engineering
-- Label encoding for categorical features (Protocol, Flags, Source_IP, Destination_IP)
-- Derived feature: `same_source_dest_ip`
-- Missing values filled with median values
+---
 
-## Explainable AI (XAI)
+## Extending the System
 
-The system uses **SHAP (SHapley Additive exPlanations)** values for explainability:
+### Adding a new LLM provider
 
-1. **SHAP TreeExplainer**: Optimized for Random Forest models
-2. **Feature Contributions**: Positive values push toward "Malicious", negative toward "Normal"
-3. **Top Features**: Ranked by absolute SHAP value
-4. **Fallback**: Uses feature importances if SHAP unavailable
+1. Subclass `src.assistant.base.BaseAssistant`.
+2. Implement `analyze_alert()` and `answer_question()`.
+3. Register the provider name in `src.assistant.factory.create_assistant()`.
 
-## AI Assistant
+No other file needs to change (Open/Closed Principle).
 
-The AI Assistant module uses Google Gemini:
+### Adding new playbook step types
 
-### Google Gemini
-- Models: `gemini-1.5-flash` (default), `gemini-1.5-pro`, or other Gemini models
-- Requires: `GEMINI_API_KEY` environment variable or API key parameter
+Edit `_BASE_STEPS`, `_INDICATOR_RECOMMENDATIONS`, or `_FEATURE_INDICATOR_MAP` in
+`src/analysis/playbook_generator.py`. The `generate_playbook()` function reads from
+those data structures automatically.
 
-### Simple Rule-Based Assistant
-- No API key required
-- Fallback when LLM is unavailable
-- Basic rule-based analysis
+---
 
 ## Limitations
 
-1. **Class Imbalance**: Dataset has more malicious samples, causing bias toward malicious predictions
-2. **Overfitting**: High training accuracy suggests possible overfitting
-3. **Feature Engineering**: Limited domain-specific feature engineering
-4. **Model Selection**: Only Random Forest implemented (no hyperparameter tuning)
+1. Near-random AUC (0.53) — the dataset size and feature set limit model quality
+2. Training accuracy ~100% suggests overfitting (`max_depth=25` on 1,430 rows)
+3. `force_malignant` workaround masks model deficiencies for demo scenarios
+4. Only Google Gemini is supported as an LLM provider
 
 ## Future Improvements
 
-- Implement SMOTE or other oversampling techniques
-- Add cross-validation for robust evaluation
-- Try alternative algorithms (XGBoost, Gradient Boosting, Neural Networks)
-- Feature selection to remove redundant features
-- Hyperparameter tuning using GridSearchCV or RandomizedSearchCV
-- Enhanced playbook templates
-- Multi-language support for reports
-- Integration with SIEM systems
+- Retrain on a larger, balanced dataset; apply SMOTE
+- Reduce `max_depth` or use cross-validated hyperparameter tuning
+- Add an Anthropic or OpenAI provider implementation
+- Integrate with SIEM systems
+- Add multi-language report support
+
+---
 
 ## License
 
-This project is provided as-is for educational and research purposes.
-
-## Contributing
-
-Contributions, issues, and feature requests are welcome!
-
-## Contact
-
-For questions or support, please open an issue in the repository.
+Provided as-is for educational and research purposes.

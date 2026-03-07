@@ -27,8 +27,8 @@ Thumbs.db
 frontend/
 node_modules/
 
-# Streamlit
-.streamlit/
+# Streamlit — only ignore the secrets file; config.toml should be tracked
+.streamlit/secrets.toml
 
 # Jupyter
 .ipynb_checkpoints/
@@ -38,6 +38,9 @@ node_modules/
 .env
 .env.local
 .env.*.local
+
+# Test artefacts
+.pytest_cache/
 
 # Data files (optional - uncomment if datasets are large)
 # *.csv

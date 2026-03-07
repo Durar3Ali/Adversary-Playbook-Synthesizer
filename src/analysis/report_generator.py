@@ -9,19 +9,8 @@ from typing import Dict, Any, Optional
 import os
 import numpy as np
 
+from src import config
 
-class NumpyEncoder(json.JSONEncoder):
-    """Custom JSON encoder for numpy types"""
-    def default(self, obj):
-        if isinstance(obj, (np.integer, np.int64, np.int32, np.int16, np.int8)):
-            return int(obj)
-        elif isinstance(obj, (np.floating, np.float64, np.float32, np.float16)):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, np.bool_):
-            return bool(obj)
-        return super(NumpyEncoder, self).default(obj)
 
 
 def convert_to_serializable(obj):
@@ -67,16 +56,19 @@ def generate_report(
     dict : Complete report dictionary
     """
     
-    report_id = f"RPT-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-    
+    report_id = f"{config.REPORT_ID_PREFIX}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+
+    prob = prediction_result.get('probability', 0.5)
+    confidence = 'HIGH' if abs(prob - 0.5) > config.CONFIDENCE_HIGH_DELTA else 'MEDIUM'
+
     report = {
         'report_id': report_id,
         'generated_at': datetime.now().isoformat(),
         'alert_classification': {
             'label': prediction_result.get('label', 'Unknown'),
-            'probability': prediction_result.get('probability', 0.0),
+            'probability': prob,
             'prediction_code': prediction_result.get('prediction', 0),
-            'confidence': 'HIGH' if abs(prediction_result.get('probability', 0.5) - 0.5) > 0.3 else 'MEDIUM'
+            'confidence': confidence,
         },
         'alert_data': alert_data,
         'explanation': {
@@ -85,16 +77,16 @@ def generate_report(
         },
         'playbook': playbook if playbook else None,
         'metadata': {
-            'report_version': '1.0',
-            'system': 'Adversary-Playbook Synthesizer',
-            'model_version': 'cyber_alert_model_v1'
+            'report_version': config.REPORT_VERSION,
+            'system': config.APP_NAME,
+            'model_version': config.MODEL_VERSION,
         }
     }
     
     return report
 
 
-def save_report(report: Dict, output_dir: str = "reports") -> str:
+def save_report(report: Dict, output_dir: str = None) -> str:
     """
     Save report to JSON file.
     
@@ -109,6 +101,8 @@ def save_report(report: Dict, output_dir: str = "reports") -> str:
     --------
     str : Path to saved report file
     """
+    if output_dir is None:
+        output_dir = config.REPORTS_DIR
     # Create reports directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     
@@ -122,7 +116,7 @@ def save_report(report: Dict, output_dir: str = "reports") -> str:
     
     # Save report
     with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(report_serializable, f, indent=2, ensure_ascii=False, cls=NumpyEncoder)
+        json.dump(report_serializable, f, indent=2, ensure_ascii=False)
     
     return filepath
 

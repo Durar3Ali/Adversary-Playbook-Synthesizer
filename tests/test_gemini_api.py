@@ -6,6 +6,13 @@ Run this to diagnose API key and model availability issues.
 import os
 import sys
 
+# Load .env so GEMINI_API_KEY is available when running this script directly.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv is optional here; key can be set in the shell instead
+
 try:
     import google.generativeai as genai
 except ImportError:
